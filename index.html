@@ -5,6 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bruteforce Battle</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #111, #222);
+      background-size: cover;
+      color: #eee;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 3em;
+      margin-bottom: 20px;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+    }
+
+    .highlight {
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 6px;
+      margin: 10px 0;
+      width: 300px;
+      text-align: center;
+      background-color: #222;
+      color: #fff;
+    }
+
+    button {
+      background: #5a9;
+      color: white;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #5a9;
+      transition: transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #botOutput, #botTimer, #playerTimer, #resultMsg {
+      margin-top: 20px;
+      font-size: 1.4em;
+    }
+
+    #score {
+      font-weight: bold;
+      color: #0f0;
+    }
+
+    #botResult::after {
+      content: attr(data-cycling);
+      color: #888;
+      margin-left: 4px;
+    }
+  </style>
 </head>
 <body>
   <h1>🧠 BRUTEFORCE <span class="highlight">BATTLE</span></h1>
@@ -16,7 +87,7 @@
   </div>
 
   <div id="gameArea" style="display: none;">
-    <div id="botOutput">Bot: <span id="botResult"></span></div>
+    <div id="botOutput">Bot: <span id="botResult" data-cycling=""></span></div>
     <div id="botTimer">Bot Time: <span id="botTime">0.00</span>s</div>
   </div>
 
@@ -31,6 +102,102 @@
     <button onclick="resetGame()">Main Menu</button>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+    let memory = [];
+    let tickRate = 50;
+    let score = parseInt(localStorage.getItem("score")) || 0;
+
+    document.getElementById("score").textContent = score;
+
+    let targetWord = "";
+    let botStart, playerStart;
+    let liveTimer;
+
+    function startBot() {
+      targetWord = document.getElementById("wordInput").value;
+      if (!targetWord) return alert("Enter a word!");
+
+      document.getElementById("mainMenu").style.display = "none";
+      document.getElementById("gameArea").style.display = "block";
+      memory = [];
+
+      let result = "";
+      let i = 0;
+      const botResultEl = document.getElementById("botResult");
+      botStart = Date.now();
+
+      const interval = setInterval(() => {
+        const letter = alphabet[Math.floor(Math.random() * alphabet.length)];
+        botResultEl.dataset.cycling = letter;
+        if (letter === targetWord[i]) {
+          result += letter;
+          i++;
+        }
+
+        botResultEl.textContent = result;
+
+        if (result === targetWord) {
+          clearInterval(interval);
+          const totalTime = ((Date.now() - botStart) / 1000).toFixed(2);
+          document.getElementById("botTime").textContent = totalTime;
+          setTimeout(startPlayer, 1000);
+        }
+      }, tickRate);
+    }
+
+    function startPlayer() {
+      document.getElementById("gameArea").style.display = "none";
+      document.getElementById("playerTurn").style.display = "block";
+      const input = document.getElementById("playerInput");
+      input.value = "";
+      input.focus();
+
+      let started = false;
+      input.addEventListener("input", () => {
+        if (!started) {
+          started = true;
+          playerStart = Date.now();
+          liveTimer = setInterval(() => {
+            const elapsed = ((Date.now() - playerStart) / 1000).toFixed(2);
+            document.getElementById("playerTime").textContent = elapsed;
+          }, 50);
+        }
+      });
+
+      input.addEventListener("keydown", function onKey(e) {
+        if (e.key === "Enter") {
+          input.removeEventListener("keydown", onKey);
+          submitPlayer();
+        }
+      });
+    }
+
+    function submitPlayer() {
+      clearInterval(liveTimer);
+      const userTyped = document.getElementById("playerInput").value;
+      const time = ((Date.now() - playerStart) / 1000).toFixed(2);
+      document.getElementById("playerTime").textContent = time;
+
+      const botTime = parseFloat(document.getElementById("botTime").textContent);
+      document.getElementById("playerTurn").style.display = "none";
+      document.getElementById("resultArea").style.display = "block";
+
+      if (userTyped === targetWord && parseFloat(time) < botTime) {
+        score++;
+        localStorage.setItem("score", score);
+        document.getElementById("resultMsg").textContent = "🔥 You win! +1 point!";
+      } else {
+        document.getElementById("resultMsg").textContent = "💀 You lose! Try again!";
+      }
+
+      document.getElementById("score").textContent = score;
+    }
+
+    function resetGame() {
+      document.getElementById("resultArea").style.display = "none";
+      document.getElementById("mainMenu").style.display = "block";
+    }
+  </script>
 </body>
 </html>
