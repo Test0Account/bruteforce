@@ -4,35 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bruteforce Battle</title>
-  <link rel="stylesheet" href="style.css" />
   <style>
     body {
-      background: linear-gradient(135deg, #111, #222);
-      background-size: cover;
+      background: linear-gradient(to bottom right, #1e1e1e, #2c3e50);
       color: #eee;
       font-family: 'Courier New', monospace;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
       padding: 20px;
+      min-height: 100vh;
     }
 
     h1 {
-      font-size: 3em;
+      font-size: 2.5em;
       margin-bottom: 20px;
-      color: #0ff;
-      text-shadow: 0 0 10px #0ff;
     }
 
     .highlight {
       color: #0f0;
-      text-shadow: 0 0 10px #0f0;
+      text-shadow: 0 0 5px #0f0;
     }
 
-    input {
+    input, button {
       padding: 10px;
       font-size: 1.2em;
       border: none;
@@ -40,24 +34,12 @@
       margin: 10px 0;
       width: 300px;
       text-align: center;
-      background-color: #222;
-      color: #fff;
     }
 
     button {
       background: #5a9;
       color: white;
-      padding: 10px 20px;
-      font-size: 1.1em;
-      border: none;
-      border-radius: 6px;
       cursor: pointer;
-      box-shadow: 0 0 10px #5a9;
-      transition: transform 0.2s ease;
-    }
-
-    button:hover {
-      transform: scale(1.05);
     }
 
     #botOutput, #botTimer, #playerTimer, #resultMsg {
@@ -71,9 +53,12 @@
     }
 
     #botResult::after {
-      content: attr(data-cycling);
-      color: #888;
-      margin-left: 4px;
+      content: '_';
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
     }
   </style>
 </head>
@@ -87,7 +72,7 @@
   </div>
 
   <div id="gameArea" style="display: none;">
-    <div id="botOutput">Bot: <span id="botResult" data-cycling=""></span></div>
+    <div id="botOutput">Bot: <span id="botResult"></span></div>
     <div id="botTimer">Bot Time: <span id="botTime">0.00</span>s</div>
   </div>
 
@@ -104,15 +89,12 @@
 
   <script>
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
-    let memory = [];
-    let tickRate = 50;
     let score = parseInt(localStorage.getItem("score")) || 0;
-
     document.getElementById("score").textContent = score;
 
     let targetWord = "";
     let botStart, playerStart;
-    let liveTimer;
+    let botTimerInterval, playerTimerInterval;
 
     function startBot() {
       targetWord = document.getElementById("wordInput").value;
@@ -120,30 +102,34 @@
 
       document.getElementById("mainMenu").style.display = "none";
       document.getElementById("gameArea").style.display = "block";
-      memory = [];
+      document.getElementById("botResult").textContent = "";
 
       let result = "";
       let i = 0;
       const botResultEl = document.getElementById("botResult");
       botStart = Date.now();
 
-      const interval = setInterval(() => {
-        const letter = alphabet[Math.floor(Math.random() * alphabet.length)];
-        botResultEl.dataset.cycling = letter;
-        if (letter === targetWord[i]) {
-          result += letter;
+      botTimerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - botStart) / 1000).toFixed(2);
+        document.getElementById("botTime").textContent = elapsed;
+      }, 50);
+
+      const cycle = setInterval(() => {
+        const guess = alphabet[Math.floor(Math.random() * alphabet.length)];
+        botResultEl.textContent = result + guess;
+
+        if (guess === targetWord[i]) {
+          result += guess;
           i++;
         }
 
-        botResultEl.textContent = result;
-
         if (result === targetWord) {
-          clearInterval(interval);
-          const totalTime = ((Date.now() - botStart) / 1000).toFixed(2);
-          document.getElementById("botTime").textContent = totalTime;
+          clearInterval(cycle);
+          clearInterval(botTimerInterval);
+          document.getElementById("botResult").textContent = result;
           setTimeout(startPlayer, 1000);
         }
-      }, tickRate);
+      }, 5);
     }
 
     function startPlayer() {
@@ -152,16 +138,19 @@
       const input = document.getElementById("playerInput");
       input.value = "";
       input.focus();
-
+      document.getElementById("playerTime").textContent = "0.00";
       let started = false;
-      input.addEventListener("input", () => {
-        if (!started) {
+
+      const updateTimer = () => {
+        const elapsed = ((Date.now() - playerStart) / 1000).toFixed(2);
+        document.getElementById("playerTime").textContent = elapsed;
+      };
+
+      input.addEventListener("input", function initStart() {
+        if (!started && input.value.length > 0) {
           started = true;
           playerStart = Date.now();
-          liveTimer = setInterval(() => {
-            const elapsed = ((Date.now() - playerStart) / 1000).toFixed(2);
-            document.getElementById("playerTime").textContent = elapsed;
-          }, 50);
+          playerTimerInterval = setInterval(updateTimer, 50);
         }
       });
 
@@ -174,8 +163,9 @@
     }
 
     function submitPlayer() {
-      clearInterval(liveTimer);
       const userTyped = document.getElementById("playerInput").value;
+      clearInterval(playerTimerInterval);
+
       const time = ((Date.now() - playerStart) / 1000).toFixed(2);
       document.getElementById("playerTime").textContent = time;
 
